@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宜蘭縣立大同國中 學生生源分布分析(107–114 學年度)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#2b2b2b; --sub:#6b7280; --bg:#f7f5f0; --card:#ffffff;
+    --accent:#8b5a2b; --line:#e5e0d5;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;
+    font-size:16px; color:var(--ink); background:var(--bg);
+    margin:0; padding:24px; line-height:1.65;
+  }
+  .wrap{max-width:1080px; margin:0 auto;}
+  header{margin-bottom:24px;}
+  h1{font-size:1.75rem; margin:0 0 6px; letter-spacing:1px;}
+  .subtitle{font-size:1rem; color:var(--sub);}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin:20px 0 28px;}
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 20px;}
+  .kpi .label{font-size:0.9375rem; color:var(--sub);}
+  .kpi .value{font-size:2rem; font-weight:700; margin-top:4px;}
+  .kpi .delta{font-size:0.9375rem; margin-top:2px;}
+  .down{color:#b91c1c;} .flat{color:#92700c;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:22px 24px; margin-bottom:24px;}
+  .card h2{font-size:1.25rem; margin:0 0 4px;}
+  .card .desc{font-size:0.9375rem; color:var(--sub); margin:0 0 16px;}
+  .chart-box{position:relative; height:380px;}
+  .toggle{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+  .toggle button{
+    font-size:0.9375rem; padding:8px 18px; border-radius:999px;
+    border:1px solid var(--line); background:#faf8f3; color:var(--ink); cursor:pointer;
+  }
+  .toggle button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+  table{width:100%; border-collapse:collapse; font-size:0.9375rem;}
+  th,td{border:1px solid var(--line); padding:8px 10px; text-align:center;}
+  th{background:#f0ece2;}
+  td.vname,th.vname{text-align:left;}
+  .note{font-size:0.875rem; color:var(--sub); margin-top:20px; background:#fbfaf6; border:1px dashed var(--line); border-radius:10px; padding:14px 18px;}
+  .note li{margin-bottom:4px;}
+  @media (max-width:640px){ .chart-box{height:320px;} body{padding:14px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>宜蘭縣立大同國中 學生生源分布分析</h1>
+    <div class="subtitle">107–114 學年度 各村生源分布(依學生通訊錄統計)</div>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="label">114 學年全校學生數</div>
+      <div class="value">33 人</div>
+      <div class="delta">七、八、九年級各一班</div>
+    </div>
+    <div class="kpi">
+      <div class="label">主要生源村(114 學年)</div>
+      <div class="value">南山・四季</div>
+      <div class="delta">合計占全校 87.9%</div>
+    </div>
+    <div class="kpi">
+      <div class="label">生源涵蓋範圍</div>
+      <div class="value">大同鄉 6 村</div>
+      <div class="delta">南山、四季、茂安、英士、崙埤、太平</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>① 各村來源分布(堆疊圖)</h2>
+    <p class="desc">可切換觀察「七年級新生」或「全校學生」的村里來源結構。</p>
+    <div class="toggle">
+      <button id="btnG7" class="active">七年級新生</button>
+      <button id="btnAll">全校學生</button>
+    </div>
+    <div class="chart-box"><canvas id="stackChart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>② 生源結構變化(百分比)</h2>
+    <p class="desc">全校學生各村占比。四季村占比由 107 學年的 50% 降至 114 學年的 27%,南山村由 29% 升至 61%,生源重心明顯北移(沿台7甲線上移)。</p>
+    <div class="chart-box"><canvas id="pctChart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>③ 數據總表</h2>
+    <div style="overflow-x:auto;">
+    <table id="dataTable">
+      <thead>
+        <tr><th class="vname">學年度</th><th>107</th><th>108</th><th>109</th><th>110</th><th>111</th><th>112</th><th>113</th><th>114</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const YEARS = ['107','108','109','110','111','112','113','114'];
+const VILLAGES = ['四季村','南山村','茂安村','英士村','崙埤村','太平村','鄉外/其他'];
+const COLORS = {
+  '四季村':'#7c9a5e','南山村':'#5b84a8','茂安村':'#d1a054','英士村':'#a86b5b',
+  '崙埤村':'#8a7ba8','太平村':'#5ba89e','鄉外/其他':'#b8b2a5'
+};
+const G7 = {
+  '107':{'四季村':12,'南山村':6,'茂安村':1,'英士村':1,'崙埤村':1,'太平村':0,'鄉外/其他':0},
+  '108':{'四季村':7,'南山村':7,'茂安村':1,'英士村':1,'崙埤村':1,'太平村':1,'鄉外/其他':0},
+  '109':{'四季村':10,'南山村':4,'茂安村':1,'英士村':0,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+  '110':{'四季村':5,'南山村':8,'茂安村':2,'英士村':0,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+  '111':{'四季村':5,'南山村':5,'茂安村':2,'英士村':1,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+  '112':{'四季村':3,'南山村':4,'茂安村':1,'英士村':1,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+  '113':{'四季村':2,'南山村':6,'茂安村':0,'英士村':0,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+  '114':{'四季村':3,'南山村':5,'茂安村':0,'英士村':1,'崙埤村':0,'太平村':0,'鄉外/其他':0}
+};
+const TOTAL = {
+  '107':{'四季村':29,'南山村':17,'茂安村':3,'英士村':2,'崙埤村':1,'太平村':0,'鄉外/其他':6},
+  '108':{'四季村':24,'南山村':18,'茂安村':4,'英士村':2,'崙埤村':2,'太平村':1,'鄉外/其他':2},
+  '109':{'四季村':29,'南山村':17,'茂安村':3,'英士村':2,'崙埤村':2,'太平村':0,'鄉外/其他':0},
+  '110':{'四季村':22,'南山村':20,'茂安村':4,'英士村':1,'崙埤村':1,'太平村':0,'鄉外/其他':0},
+  '111':{'四季村':20,'南山村':18,'茂安村':5,'英士村':2,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+  '112':{'四季村':14,'南山村':19,'茂安村':5,'英士村':3,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+  '113':{'四季村':13,'南山村':19,'茂安村':3,'英士村':2,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+  '114':{'四季村':9,'南山村':20,'茂安村':2,'英士村':2,'崙埤村':0,'太平村':0,'鄉外/其他':0}
+};
+const g7Sum = YEARS.map(y => VILLAGES.reduce((s,v)=>s+G7[y][v],0));
+const totSum = YEARS.map(y => VILLAGES.reduce((s,v)=>s+TOTAL[y][v],0));
+
+Chart.defaults.font.family = '"Noto Sans TC","Microsoft JhengHei",sans-serif';
+Chart.defaults.font.size = 15;
+Chart.defaults.color = '#2b2b2b';
+
+// ① 堆疊圖(可切換)
+function stackDatasets(src){
+  return VILLAGES.map(v=>({
+    label:v, data:YEARS.map(y=>src[y][v]),
+    backgroundColor:COLORS[v], borderColor:'#fff', borderWidth:1, stack:'s'
+  }));
+}
+const stackChart = new Chart(document.getElementById('stackChart'), {
+  type:'bar',
+  data:{ labels:YEARS.map(y=>y+'學年'), datasets:stackDatasets(G7) },
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{position:'top'},
+      tooltip:{ callbacks:{
+        label:c=>` ${c.dataset.label}:${c.parsed.y} 人`,
+        footer:items=>{ const t = items.reduce((s,i)=>s+i.parsed.y,0); return '合計 '+t+' 人'; }
+      }}},
+    scales:{ x:{stacked:true, grid:{display:false}}, y:{stacked:true, beginAtZero:true, title:{display:true,text:'人數'}} }
+  }
+});
+const btnG7 = document.getElementById('btnG7'), btnAll = document.getElementById('btnAll');
+function switchMode(mode){
+  stackChart.data.datasets = stackDatasets(mode==='g7'?G7:TOTAL);
+  stackChart.update();
+  btnG7.classList.toggle('active', mode==='g7');
+  btnAll.classList.toggle('active', mode!=='g7');
+}
+btnG7.onclick = ()=>switchMode('g7');
+btnAll.onclick = ()=>switchMode('all');
+
+// ② 百分比堆疊圖(全校)
+new Chart(document.getElementById('pctChart'), {
+  type:'bar',
+  data:{ labels:YEARS.map(y=>y+'學年'),
+    datasets: VILLAGES.map(v=>({
+      label:v,
+      data:YEARS.map((y,i)=> totSum[i] ? +(TOTAL[y][v]/totSum[i]*100).toFixed(1) : 0),
+      backgroundColor:COLORS[v], borderColor:'#fff', borderWidth:1, stack:'p'
+    }))},
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{position:'top'},
+      tooltip:{callbacks:{label:c=>` ${c.dataset.label}:${c.parsed.y}%`}} },
+    scales:{ x:{stacked:true, grid:{display:false}},
+      y:{stacked:true, max:100, title:{display:true,text:'占比(%)'}, ticks:{callback:v=>v+'%'}} }
+  }
+});
+
+// ③ 表格
+const tbody = document.querySelector('#dataTable tbody');
+function addRow(name, vals, bold){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td class="vname"${bold?' style="font-weight:700"':''}>${name}</td>` +
+    vals.map(v=>`<td${bold?' style="font-weight:700"':''}>${v}</td>`).join('');
+  tbody.appendChild(tr);
+}
+addRow('七年級新生數', g7Sum, true);
+VILLAGES.forEach(v=>{
+  const has = YEARS.some(y=>TOTAL[y][v]>0);
+  if(has) addRow('　全校・'+v, YEARS.map(y=>TOTAL[y][v]||'–'), false);
+});
+addRow('全校總人數', totSum, true);
+</script>
+</body>
+</html>
