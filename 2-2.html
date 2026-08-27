@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>指標 2-2｜歷年生源分布</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#faf6f2; --card:#fff; --ink:#2b2320; --ink-soft:#6b5c54;
+  --line:#e2d6cb; --red:#a8322a; --earth:#8a6a4f;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.wrap{flex:1; min-height:0; display:flex; flex-direction:column; padding:14px 20px 12px; gap:10px; max-width:1240px; width:100%; margin:0 auto}
+
+/* header */
+.head{display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; flex:0 0 auto}
+.head .t{flex:1; min-width:240px}
+.eyebrow{font-size:.78rem; letter-spacing:.14em; color:var(--earth); font-weight:500; margin:0 0 1px}
+h1{font-family:"Noto Serif TC",serif; font-size:1.32rem; font-weight:700; margin:0; line-height:1.3}
+.sub{margin:2px 0 0; font-size:.9rem; color:var(--ink-soft)}
+.toggle{display:flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:var(--card); flex:0 0 auto}
+.toggle button{font:inherit; font-size:.88rem; font-weight:500; border:0; background:none; color:var(--ink-soft); padding:7px 17px; cursor:pointer; transition:.15s; white-space:nowrap}
+.toggle button.active{background:var(--earth); color:#fff}
+.toggle button:focus-visible{outline:2px solid var(--red); outline-offset:-2px}
+
+/* chart */
+.chart{flex:1; min-height:0; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 10px 2px}
+.chart svg{display:block; width:100%; height:100%}
+.gridline{stroke:#eadfd4; stroke-width:1}
+.axis{fill:#8b7a6e; font-size:15px}
+.axis-y{text-anchor:end}
+.axis-x{text-anchor:middle; font-weight:500; fill:#5c4f46}
+.total{text-anchor:middle; font-size:16px; font-weight:700; fill:#4a3d35}
+.ylab{fill:#a1907f; font-size:14px; text-anchor:middle}
+
+/* legend + kpi */
+.legend{display:flex; flex-wrap:wrap; gap:6px 16px; font-size:.85rem; color:var(--ink-soft); flex:0 0 auto; padding-left:2px}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.legend i{width:13px; height:13px; border-radius:3px; display:block}
+.foot{display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:0 0 auto}
+.kpi{display:flex; gap:10px; flex-wrap:wrap; flex:1}
+.kpi div{background:var(--card); border:1px solid var(--line); border-left:4px solid var(--earth); border-radius:8px; padding:6px 13px}
+.kpi b{display:block; font-size:1.12rem; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.25}
+.kpi span{font-size:.79rem; color:var(--ink-soft)}
+a.full{flex:0 0 auto; font-size:.87rem; font-weight:500; text-decoration:none; color:#fff; background:var(--red); padding:9px 18px; border-radius:8px; white-space:nowrap}
+a.full:hover{background:#8d2822}
+a.full:focus-visible{outline:2px solid var(--ink); outline-offset:2px}
+@media (max-width:640px){ body{font-size:14px} h1{font-size:1.15rem} .kpi div{padding:5px 10px} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div class="t">
+      <p class="eyebrow">指標 2-2　學生入學與就學情形</p>
+      <h1>歷年生源分布（107–114 學年度）</h1>
+      <p class="sub" id="sub">全校學生以四季村、南山村為兩大生源；114 學年度起生源全數來自學區內四村。</p>
+    </div>
+    <div class="toggle" role="group" aria-label="切換資料範圍">
+      <button id="btnAll" class="active" type="button">全校學生</button>
+      <button id="btnG7" type="button">七年級新生</button>
+    </div>
+  </div>
+
+  <div class="chart"><svg id="svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="歷年各村生源人數堆疊長條圖"></svg></div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="foot">
+    <div class="kpi" id="kpi"></div>
+    <a class="full" href="https://bacon-sys.github.io/115-eval-recruit/" target="_blank" rel="noopener">開啟完整版分析 ↗</a>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var YEARS=['107','108','109','110','111','112','113','114'];
+  var VILLAGES=['四季村','南山村','茂安村','英士村','崙埤村','太平村','鄉外/其他'];
+  var COLORS={'四季村':'#7c9a5e','南山村':'#5b84a8','茂安村':'#d1a054','英士村':'#a86b5b','崙埤村':'#8a7ba8','太平村':'#5ba89e','鄉外/其他':'#b8b2a5'};
+  var G7={'107':{'四季村':12,'南山村':6,'茂安村':1,'英士村':1,'崙埤村':1,'太平村':0,'鄉外/其他':0},
+          '108':{'四季村':7,'南山村':7,'茂安村':1,'英士村':1,'崙埤村':1,'太平村':1,'鄉外/其他':0},
+          '109':{'四季村':10,'南山村':4,'茂安村':1,'英士村':0,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+          '110':{'四季村':5,'南山村':8,'茂安村':2,'英士村':0,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+          '111':{'四季村':5,'南山村':5,'茂安村':2,'英士村':1,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+          '112':{'四季村':3,'南山村':4,'茂安村':1,'英士村':1,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+          '113':{'四季村':2,'南山村':6,'茂安村':0,'英士村':0,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+          '114':{'四季村':3,'南山村':5,'茂安村':0,'英士村':1,'崙埤村':0,'太平村':0,'鄉外/其他':0}};
+  var TOTAL={'107':{'四季村':29,'南山村':17,'茂安村':3,'英士村':2,'崙埤村':1,'太平村':0,'鄉外/其他':6},
+          '108':{'四季村':24,'南山村':18,'茂安村':4,'英士村':2,'崙埤村':2,'太平村':1,'鄉外/其他':2},
+          '109':{'四季村':29,'南山村':17,'茂安村':3,'英士村':2,'崙埤村':2,'太平村':0,'鄉外/其他':0},
+          '110':{'四季村':22,'南山村':20,'茂安村':4,'英士村':1,'崙埤村':1,'太平村':0,'鄉外/其他':0},
+          '111':{'四季村':20,'南山村':18,'茂安村':5,'英士村':2,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+          '112':{'四季村':14,'南山村':19,'茂安村':5,'英士村':3,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+          '113':{'四季村':13,'南山村':19,'茂安村':3,'英士村':2,'崙埤村':0,'太平村':0,'鄉外/其他':0},
+          '114':{'四季村':9,'南山村':20,'茂安村':2,'英士村':2,'崙埤村':0,'太平村':0,'鄉外/其他':0}};
+
+  var NS='http://www.w3.org/2000/svg';
+  var W=1000,H=430,ML=52,MR=14,MT=26,MB=42;
+  var svg=document.getElementById('svg');
+
+  /* keep the drawing filling the frame at any aspect ratio */
+  function fit(){
+    var box=svg.parentNode.getBoundingClientRect();
+    if(box.width>4 && box.height>4){
+      H=Math.max(230,Math.min(700,Math.round(W*box.height/box.width)));
+    }
+    svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  }
+
+  function el(n,a){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);return e;}
+  function sum(o){var s=0;VILLAGES.forEach(function(v){s+=o[v]||0;});return s;}
+  function niceMax(m){var step=m>40?10:m>20?5:m>10?5:2;return Math.ceil(m/step)*step;}
+
+  function draw(src){
+    fit();
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    var totals=YEARS.map(function(y){return sum(src[y]);});
+    var yMax=niceMax(Math.max.apply(null,totals));
+    var pw=W-ML-MR, ph=H-MT-MB;
+    var band=pw/YEARS.length, bw=Math.min(62, band*0.56);
+    var step=yMax>40?10:5;
+
+    for(var v=0; v<=yMax; v+=step){
+      var y=MT+ph-(v/yMax)*ph;
+      svg.appendChild(el('line',{x1:ML,x2:W-MR,y1:y,y2:y,'class':'gridline'}));
+      var tx=el('text',{x:ML-10,y:y+5,'class':'axis axis-y'}); tx.textContent=v; svg.appendChild(tx);
+    }
+    var yl=el('text',{x:16,y:MT+ph/2,'class':'ylab',transform:'rotate(-90 16 '+(MT+ph/2)+')'});
+    yl.textContent='人數'; svg.appendChild(yl);
+
+    YEARS.forEach(function(y,i){
+      var cx=ML+band*i+band/2, acc=0;
+      VILLAGES.forEach(function(v){
+        var val=src[y][v]||0; if(!val) return;
+        var h=(val/yMax)*ph;
+        var yTop=MT+ph-((acc+val)/yMax)*ph;
+        svg.appendChild(el('rect',{x:cx-bw/2,y:yTop,width:bw,height:h,fill:COLORS[v],stroke:'#fff','stroke-width':1,rx:1}));
+        if(h>19){
+          var t=el('text',{x:cx,y:yTop+h/2+5,'text-anchor':'middle','font-size':13,'font-weight':500,fill:'#fff'});
+          t.textContent=val; svg.appendChild(t);
+        }
+        acc+=val;
+      });
+      var tt=el('text',{x:cx,y:MT+ph-(acc/yMax)*ph-8,'class':'total'}); tt.textContent=acc; svg.appendChild(tt);
+      var xl=el('text',{x:cx,y:H-MB+26,'class':'axis axis-x'}); xl.textContent=y; svg.appendChild(xl);
+    });
+    svg.appendChild(el('line',{x1:ML,x2:W-MR,y1:MT+ph,y2:MT+ph,stroke:'#c9b8a8','stroke-width':1.5}));
+  }
+
+  var lg=document.getElementById('legend');
+  VILLAGES.forEach(function(v){
+    var s=document.createElement('span');
+    s.innerHTML='<i style="background:'+COLORS[v]+'"></i>'+v;
+    lg.appendChild(s);
+  });
+
+  var KPI={
+    all:[['33 人','114 學年度全校學生'],['20 人','南山村・最大生源'],['100%','生源來自學區內四村']],
+    g7:[['9 人','114 學年度七年級新生'],['21 → 9','107→114 新生人數變化'],['4 村','穩定招生之學區村落']]
+  };
+  var SUB={
+    all:'全校學生以四季村、南山村為兩大生源；114 學年度起生源全數來自學區內四村。',
+    g7:'七年級新生人數反映學區少子女化趨勢，南山村已成為新生主要來源。'
+  };
+  function setKpi(m){
+    var k=document.getElementById('kpi'); k.innerHTML='';
+    KPI[m].forEach(function(p){
+      var d=document.createElement('div');
+      d.innerHTML='<b>'+p[0]+'</b><span>'+p[1]+'</span>';
+      k.appendChild(d);
+    });
+    document.getElementById('sub').textContent=SUB[m];
+  }
+
+  var bA=document.getElementById('btnAll'), bG=document.getElementById('btnG7');
+  var cur='all';
+  bA.onclick=function(){mode('all');};
+  bG.onclick=function(){mode('g7');};
+  function mode(m){
+    cur=m;
+    draw(m==='g7'?G7:TOTAL); setKpi(m);
+    bG.classList.toggle('active',m==='g7');
+    bA.classList.toggle('active',m!=='g7');
+  }
+  var rt;
+  window.addEventListener('resize',function(){
+    clearTimeout(rt); rt=setTimeout(function(){ draw(cur==='g7'?G7:TOTAL); },120);
+  });
+  mode('all');
+})();
+</script>
+</body>
+</html>
